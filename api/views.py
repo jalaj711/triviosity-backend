@@ -164,14 +164,19 @@ class login(generics.GenericAPIView):
 )
 class question(generics.GenericAPIView):
     def get(self, request):
-        cround = request.user.current_round
+        cround = request.user.current_round_overall_overall
         try:
-            if cround > Question.objects.filter().count():
+            if cround > Question.objects.count():
                 return JsonResponse({
                     'gameOver': True,
                     'message': 'Game is over'
                 })
-            question = Question.objects.get(round=cround)
+            elif request.user.current_genre_round > Question.objects.filter(genre=request.user.current_genre).count():
+                return JsonResponse({
+                    'roundOver': True,
+                    'message': 'This round is over'
+                })
+            question = Question.objects.get(round=cround, genre=request.user.current_genre)
             try:
                 media = question.media.url
             except ValueError:
@@ -199,7 +204,7 @@ class question(generics.GenericAPIView):
 )
 class clue(generics.GenericAPIView):
     def get(self, request):
-        cround = request.user.current_round
+        cround = request.user.current_round_overall
         try:
             question = Question.objects.get(round=cround)
         except Question.DoesNotExist:
@@ -234,7 +239,7 @@ class clue(generics.GenericAPIView):
 )
 class checkClueAvailability(generics.GenericAPIView):
     def get(self, request):
-        cround = request.user.current_round
+        cround = request.user.current_round_overall
         try:
             question = Question.objects.get(round=cround)
         except Question.DoesNotExist:
@@ -268,7 +273,7 @@ class checkClueAvailability(generics.GenericAPIView):
 )
 class answer(generics.GenericAPIView):
     def post(self, request):
-        cround = request.user.current_round
+        cround = request.user.current_round_overall
 
         if 'answer' not in request.data.keys():
             return JsonResponse({'message': 'Empty answer not accepted'}, status=status.HTTP_400_BAD_REQUEST)
@@ -281,10 +286,12 @@ class answer(generics.GenericAPIView):
             if (len(question.answer.split(',')) > 1):
                 if answer in question.answer.split(','):
                     # Increment points
-                    request.user.current_round = cround + 1
+                    request.user.current_round_overall = cround + 1
+                    request.user.current_genre_round = request.user.currrent_genre_round + 1
                     request.user.points += question.points
                     request.user.time = timezone.now()
                     request.user.calc_wait_time_from = None
+
 
                     request.user.save()
                     return JsonResponse({
@@ -293,7 +300,7 @@ class answer(generics.GenericAPIView):
             if question.answer == answer:
 
                 # Increment points
-                request.user.current_round = cround + 1
+                request.user.current_round_overall = cround + 1
                 request.user.points += question.points
                 request.user.time = timezone.now()
                 request.user.calc_wait_time_from = None
