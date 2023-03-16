@@ -28,6 +28,7 @@ class User(AbstractUser):
     current_round_overall = models.IntegerField(default=1)
     current_genre_round = models.IntegerField(default=1)
     current_genre = models.ForeignKey(Genre, on_delete=models.SET_NULL, null=True)
+    current_standings = models.TextField(verbose_name="Standings in different rounds", max_length=400, default="{}")
     points = models.IntegerField(default=0)
     time = models.DateTimeField(auto_now_add=True)
     calc_wait_time_from = models.DateTimeField(blank=True, null=True)

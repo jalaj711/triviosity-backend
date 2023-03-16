@@ -1,4 +1,5 @@
 from datetime import timedelta
+import json
 from django.db.models import Model
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
@@ -191,7 +192,11 @@ class set_genre(generics.GenericAPIView):
                 "message": "Genre ID is required for"
             })
         genre = Genre.objects.get(id=request.data.get("genre_id"))
+        current_standings = json.loads(request.user.current_standings)
+        current_standings[request.user.current_genre.id] = request.user.current_genre_round
+        request.user.current_genre_round = current_standings.get(genre.id, 1)
         request.user.current_genre = genre
+        request.user.current_standing = json.dumps(current_standings)
         request.user.save()
         return Response(
             {
@@ -206,10 +211,7 @@ class question(generics.GenericAPIView):
     def get(self, request):
         cround = request.user.current_round_overall
         try:
-            print(request.user.current_genre_round)
-            print(request.user.current_genre)
-            print(Question.objects.filter(genre_id=request.user.current_genre))
-            if cround > Question.objects.count():
+            if cround  - Genre.objects.all().count() > Question.objects.count():
                 return JsonResponse({
                     'gameOver': True,
                     'message': 'Game is over'
@@ -219,7 +221,7 @@ class question(generics.GenericAPIView):
                     'roundOver': True,
                     'message': 'This round is over'
                 })
-            question = Question.objects.get(round=cround, genre_id=request.user.current_genre)
+            question = Question.objects.get(genre_round=request.user.current_genre_round, genre=request.user.current_genre)
             try:
                 media = question.media.url
             except ValueError:
@@ -227,16 +229,16 @@ class question(generics.GenericAPIView):
 
             # To make sure that the wait_time is not reset everytime a
             # user fetches the question, for example when refreshing the page
-            print(request.user.calc_wait_time_from)
             if request.user.calc_wait_time_from is None:
-                print("setting wait time")
                 request.user.calc_wait_time_from = timezone.now()
                 request.user.save()
 
             return JsonResponse({
                 'text': question.text,
-                'round': question.round,
-                'media': media
+                'round': question.genre_round,
+                'overall_round': question.round,
+                'media': media,
+                'genre': GenreSerializer(question.genre).data
             })
         except Question.DoesNotExist:
             return JsonResponse({
@@ -260,7 +262,6 @@ class clue(generics.GenericAPIView):
 
         # Make sure that enough time has passed for the user
         diff = timezone.now() - request.user.calc_wait_time_from
-        print(timezone.now(), request.user.calc_wait_time_from, diff)
         if question.clue_wait_time < 0:
             return JsonResponse({
                 'not-available': True,
@@ -327,12 +328,12 @@ class answer(generics.GenericAPIView):
         answer = re.sub(' +', ' ', answer)
 
         try:
-            question = Question.objects.get(round=cround)
+            question = Question.objects.get(genre=request.user.current_genre, genre_round=request.user.current_genre_round)
             if (len(question.answer.split(',')) > 1):
                 if answer in question.answer.split(','):
                     # Increment points
                     request.user.current_round_overall = cround + 1
-                    request.user.current_genre_round = request.user.currrent_genre_round + 1
+                    request.user.current_genre_round = request.user.current_genre_round + 1
                     request.user.points += question.points
                     request.user.time = timezone.now()
                     request.user.calc_wait_time_from = None
@@ -346,6 +347,7 @@ class answer(generics.GenericAPIView):
 
                 # Increment points
                 request.user.current_round_overall = cround + 1
+                request.user.current_genre_round = request.user.current_genre_round + 1
                 request.user.points += question.points
                 request.user.time = timezone.now()
                 request.user.calc_wait_time_from = None
@@ -358,7 +360,7 @@ class answer(generics.GenericAPIView):
             return JsonResponse({
                 'success': False
             })
-        except Model.DoesNotExist:
+        except Question.DoesNotExist:
             return JsonResponse({
                 'message': 'Question not found'
             }, status=status.HTTP_404_NOT_FOUND)
