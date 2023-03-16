@@ -158,6 +158,24 @@ class login(generics.GenericAPIView):
                 "Wrong Credentials! Please try again.", status=status.HTTP_403_FORBIDDEN
             )
 
+@permission_classes(
+    [
+        IsAuthenticated,
+    ]
+)
+class list_genres(generics.GenericAPIView):
+    serializer_class = GenreSerializer
+
+    def get(self, request):
+        return Response(
+            {
+                "genres": self.serializer_class(
+                    Genre.objects.all(), context=self.get_serializer_context(), many=True
+                ).data,
+                "status": 200,
+            }
+        )
+
 
 @permission_classes(
     [IsAuthenticated]
