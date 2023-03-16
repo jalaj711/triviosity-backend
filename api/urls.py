@@ -40,6 +40,7 @@ urlpatterns = [
     path('answer/', csrf_exempt(available_when_live(views.answer.as_view())), name='answer'),
     path('clue/', csrf_exempt(available_when_live(views.clue.as_view())), name='clue'),
     path('list-genres/', csrf_exempt(available_when_live(views.list_genres.as_view())), name='genres_list'),
+    path('set-genre/', csrf_exempt(available_when_live(views.set_genre.as_view())), name='genres_set'),
     path('check-clue-available/', csrf_exempt(available_when_live(
         views.checkClueAvailability.as_view())), name='clueAvailability'),
     path('leaderboard/', csrf_exempt(views.leaderboard), name='leaderboard'),

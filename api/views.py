@@ -176,25 +176,50 @@ class list_genres(generics.GenericAPIView):
             }
         )
 
+@permission_classes(
+    [
+        IsAuthenticated,
+    ]
+)
+class set_genre(generics.GenericAPIView):
+    serializer_class = GenreSerializer
+
+    def post(self, request):
+        if(request.data.get("genre_id") is None):
+            return Response({
+                "status": 400,
+                "message": "Genre ID is required for"
+            })
+        genre = Genre.objects.get(id=request.data.get("genre_id"))
+        request.user.current_genre = genre
+        request.user.save()
+        return Response(
+            {
+                "status": 200,
+            }
+        )
 
 @permission_classes(
     [IsAuthenticated]
 )
 class question(generics.GenericAPIView):
     def get(self, request):
-        cround = request.user.current_round_overall_overall
+        cround = request.user.current_round_overall
         try:
+            print(request.user.current_genre_round)
+            print(request.user.current_genre)
+            print(Question.objects.filter(genre_id=request.user.current_genre))
             if cround > Question.objects.count():
                 return JsonResponse({
                     'gameOver': True,
                     'message': 'Game is over'
                 })
-            elif request.user.current_genre_round > Question.objects.filter(genre=request.user.current_genre).count():
+            elif request.user.current_genre_round > Question.objects.filter(genre_id=request.user.current_genre).count():
                 return JsonResponse({
                     'roundOver': True,
                     'message': 'This round is over'
                 })
-            question = Question.objects.get(round=cround, genre=request.user.current_genre)
+            question = Question.objects.get(round=cround, genre_id=request.user.current_genre)
             try:
                 media = question.media.url
             except ValueError:
@@ -202,7 +227,9 @@ class question(generics.GenericAPIView):
 
             # To make sure that the wait_time is not reset everytime a
             # user fetches the question, for example when refreshing the page
+            print(request.user.calc_wait_time_from)
             if request.user.calc_wait_time_from is None:
+                print("setting wait time")
                 request.user.calc_wait_time_from = timezone.now()
                 request.user.save()
 
@@ -211,7 +238,7 @@ class question(generics.GenericAPIView):
                 'round': question.round,
                 'media': media
             })
-        except Model.DoesNotExist:
+        except Question.DoesNotExist:
             return JsonResponse({
                 'message': 'Question not found'
             }, status=status.HTTP_404_NOT_FOUND)

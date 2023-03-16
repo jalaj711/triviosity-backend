@@ -7,7 +7,9 @@ class Genre(models.Model):
     name = models.CharField(max_length=30)
     theme_pic = models.FileField(upload_to="themes/", blank=True, null=True)
     start_time = models.DateTimeField(verbose_name="Start time of the theme:")
-    end_time = models.DateTimeField(verbose_name="End time of the field: ")
+    end_time = models.DateTimeField(verbose_name="End time of the theme: ")
+    def __str__(self):
+        return self.name
 
 class Question(models.Model):
     text = models.TextField()
@@ -19,6 +21,8 @@ class Question(models.Model):
     media = models.FileField(upload_to="questions/", blank=True, null=True)
     points = models.IntegerField(default=10)
     genre = models.ForeignKey(Genre, on_delete=models.SET_NULL, null=True)
+    def __str__(self):
+        return self.text
 
 class User(AbstractUser):
     current_round_overall = models.IntegerField(default=1)
@@ -28,6 +32,8 @@ class User(AbstractUser):
     time = models.DateTimeField(auto_now_add=True)
     calc_wait_time_from = models.DateTimeField(blank=True, null=True)
     picture = models.URLField(verbose_name="Avatar of the user: ", default=None, null=True)
+    def __str__(self):
+        return self.first_name + " " + self.last_name
 
 class Meta(models.Model):
     start_time = models.DateTimeField()
