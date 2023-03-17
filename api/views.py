@@ -193,7 +193,8 @@ class set_genre(generics.GenericAPIView):
             })
         genre = Genre.objects.get(id=request.data.get("genre_id"))
         current_standings = json.loads(request.user.current_standings)
-        current_standings[request.user.current_genre.id] = request.user.current_genre_round
+        if request.user.current_genre:
+            current_standings[request.user.current_genre.id] = request.user.current_genre_round
         request.user.current_genre_round = current_standings.get(genre.id, 1)
         request.user.current_genre = genre
         request.user.current_standing = json.dumps(current_standings)
